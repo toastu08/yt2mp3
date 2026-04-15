@@ -34,7 +34,7 @@ class Media_engine:
         
         ydl_opts = {
             'format': 'bestaudio/best',
-            'outtmpl': self.download_path + f"{self.result[song]["title"]}.%(ext)s",
+            'outtmpl': self.download_path + f"/{self.result[song]["title"]}.%(ext)s",
             'postprocessors': [{
                 'key': 'FFmpegExtractAudio',
                 'preferredcodec': 'mp3',

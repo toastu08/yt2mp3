@@ -85,7 +85,7 @@
      <string>Next</string>
     </property>
    </widget>
-   <widget class="QListWidget" name="song_list">
+   <widget class="QListWidget" name="list_widget">
     <property name="geometry">
      <rect>
       <x>70</x>
@@ -116,6 +116,19 @@
     </property>
     <property name="text">
      <string>Select Source</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="download_button">
+    <property name="geometry">
+     <rect>
+      <x>583</x>
+      <y>10</y>
+      <width>91</width>
+      <height>34</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Download</string>
     </property>
    </widget>
   </widget>
