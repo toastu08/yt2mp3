@@ -10,10 +10,11 @@ class Player_UI:
     def __init__(self, path):
 
         #variables
-        self.path = path
-        self.queue = deque()
-        self.song_list = []
-        #self.current_song_index
+        self.path = path #the variable of the path where our player will display the songs in the list widget and play them from -> string
+        self.queue = deque() #used as a queue for storing the order of the upcoming songs, -> [(index, title)]
+        self.history = deque() #used as a stack for storing the songs played prior, -> [(index, title)]
+        self.current_song = None #touple of information of the current song -> (index, title)
+        self.song_list = [] #list of the titles of the mp3 files -> [strings]
         
         ##
 
@@ -21,15 +22,15 @@ class Player_UI:
         #load ui form .ui file
         self.app = QApplication()
 
-        self.loader = QUiLoader()
+        loader = QUiLoader()
 
-        self.file = QFile('player.ui')
+        file = QFile('player.ui')
 
-        self.file.open(QFile.ReadOnly)
+        file.open(QFile.ReadOnly)
 
-        self.window = self.loader.load(self.file)
+        self.window = loader.load(file)
 
-        self.file.close()
+        file.close()
         ##
 
         #audio player and audio output
@@ -49,10 +50,12 @@ class Player_UI:
 
         self.window.next_button.clicked.connect(self.play_next)
 
-        self.audio_output.setVolume(0.7)
-        self.window.volume_slider.valueChanged.connect(lambda v: self.audio_output.setVolume(v / 100))
+        self.window.prev_button.clicked.connect(self.play_prev)
 
-        self.player.mediaStatusChanged.connect(lambda status: self.play_next() if  status == QMediaPlayer.MediaStatus.EndOfMedia else None)
+        self.audio_output.setVolume(0.7)
+        self.window.volume_slider.valueChanged.connect(lambda v: self.audio_output.setVolume(v / 100)) #volume
+
+        self.player.mediaStatusChanged.connect(lambda status: self.play_next() if  status == QMediaPlayer.MediaStatus.EndOfMedia else None) #when song ends
 
         self.window.download_button.clicked.connect(self.open_downloader)
 
@@ -64,7 +67,7 @@ class Player_UI:
         self.window.seek_slider.sliderMoved.connect(self.player.setPosition)
         ##
 
-        self.app.setDesktopFileName("resonance")
+        self.app.setDesktopFileName("resonance") #for testing purposes
 
         #stuff shows on the screen
         self.window.show()
@@ -73,22 +76,25 @@ class Player_UI:
         ##
 
     
+    #clears & populates the queue from the current selected song up untill the last song, in order, triggers when selecting a song
     def init_queue(self):
         self.queue.clear()
-        start = self.window.list_widget.currentRow()
+        start = self.window.list_widget.currentRow() + 1
         stop = self.window.list_widget.count()
 
         for i in range(start, stop):
             item = self.window.list_widget.item(i)
             self.queue.append((i, item.text()))
 
+
+    #triggers when pressing the download button, creates an instance of the downloader as a separate window
     def open_downloader(self):
         downloader = Downloader_UI(self.path, self.window)
         downloader.show()
 
 
 
-    #dialog window to select the folder from which we play music
+    #triggers when pressing select source, dialog window to select the folder from which we play music
     def select_source_folder(self):
         source = QFileDialog.getExistingDirectory(self.window, "Select Directory")
 
@@ -98,20 +104,57 @@ class Player_UI:
 
 
     
-    #when double clicked an element in the list
+    #triggers when double clicked an element in the list widget
     def select_source(self):
-        self.init_queue()
-        self.set_source()
-    
-    def set_source(self):
-        index, title = self.queue.popleft()
+        self.init_queue() #when the user selects a new song we automatically assume they want to forget the old queue
 
+        index = self.window.list_widget.currentRow()
+        title = self.window.list_widget.currentItem().text()
+
+        self.set_source(index, title)
+
+    
+    #helper method for putting the audio player to work, provide an index for selection and a title for playing
+    def set_source(self, index, title):
         self.player.setSource(QUrl.fromLocalFile(f"{self.path}/{title}"))
-        self.window.list_widget.setCurrentRow(index)
+
+        if self.window.list_widget.currentRow() != index:
+            self.window.list_widget.setCurrentRow(index)
         self.play_music()
 
+    #playes next song in queue, only used when NOT manually selecting a song
+    def set_next_source(self):
+        index, title = self.queue.popleft()
+        
+        if self.current_song:
+            self.history.append(self.current_song)
+        
+        self.current_song = (index, title)
+        self.set_source(index, title)
+    
 
-    #when the play button is pressed
+    #triggered when prev button is pressed, if there is history, it goes back if not it replays the current song
+    def play_prev(self):
+        if len(self.history) > 0:
+            if self.current_song:
+                self.queue.appendleft(self.current_song)
+            
+            self.current_song = self.history.pop()
+            index, title = self.current_song
+            
+            self.player.setSource(QUrl.fromLocalFile(f"{self.path}/{title}"))
+            self.window.list_widget.setCurrentRow(index)
+            self.play_music()
+        
+        elif self.current_song:
+            index, title = self.current_song
+            self.player.setSource(QUrl.fromLocalFile(f"{self.path}/{title}"))
+            self.player.setPosition(0)
+            self.window.list_widget.setCurrentRow(index)
+            self.play_music()
+
+
+    #triggers when the play button is pressed and also when a method has to play a new song
     def play_music(self):
         if self.player.playbackState() == QMediaPlayer.PlaybackState.PlayingState:
             self.player.pause()
@@ -120,19 +163,19 @@ class Player_UI:
             self.player.play()
     
     
-
+    #triggers when the next button is pressed 
     def play_next(self):
         #self.window.list_widget.setCurrentRow(self.window.list_widget.currentRow() + 1)
-        if len(self.queue) != 0:
+        if self.queue:
             #self.queue.popleft()
-            self.set_source()
+            self.set_next_source()
         else:
             self.window.list_widget.setCurrentRow(0)
             self.select_source()
 
 
 
-
+    
     def populate_lists_widget(self, entries):
         self.window.list_widget.clear()
 

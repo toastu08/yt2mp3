@@ -39,6 +39,8 @@ class Media_engine:
                 'key': 'FFmpegExtractAudio',
                 'preferredcodec': 'mp3',
             }],
+            'cookiesfrombrowser': ('firefox', ),
+            'remote_components': ['ejs:github'],
         }
 
         
